@@ -18,6 +18,7 @@ type FakeSession = {
 	bindExtensions: ReturnType<typeof vi.fn>;
 	subscribe: ReturnType<typeof vi.fn>;
 	prompt: ReturnType<typeof vi.fn>;
+	waitForIdle: ReturnType<typeof vi.fn>;
 	reload: ReturnType<typeof vi.fn>;
 };
 
@@ -71,6 +72,7 @@ function createRuntimeHost(assistantMessage: AssistantMessage): FakeRuntimeHost 
 		bindExtensions: vi.fn(async () => {}),
 		subscribe: vi.fn(() => () => {}),
 		prompt: vi.fn(async () => {}),
+		waitForIdle: vi.fn(async () => {}),
 		reload: vi.fn(async () => {}),
 	};
 
@@ -151,5 +153,31 @@ describe("runPrintMode", () => {
 
 		expect(exitCode).toBe(1);
 		expect(errorSpy).toHaveBeenCalled();
+	});
+
+	it("waits for a turn an extension command queued before printing the answer", async () => {
+		const runtimeHost = createRuntimeHost(createAssistantMessage({ text: "before" }));
+		const { session } = runtimeHost;
+		// Like /review: the command returns after queueing its turn, and the answer exists only once the turn ends.
+		session.waitForIdle.mockImplementation(async () => {
+			session.state.messages.push(createAssistantMessage({ text: "review done" }));
+		});
+		const output: string[] = [];
+		vi.spyOn(process.stdout, "write").mockImplementation(((chunk: string | Uint8Array, ...rest: unknown[]) => {
+			output.push(String(chunk));
+			// Print mode flushes stdout by waiting for the write callback.
+			const callback = rest.find((arg) => typeof arg === "function") as (() => void) | undefined;
+			callback?.();
+			return true;
+		}) as typeof process.stdout.write);
+
+		const exitCode = await runPrintMode(runtimeHost as unknown as Parameters<typeof runPrintMode>[0], {
+			mode: "text",
+			initialMessage: "/review",
+		});
+
+		expect(exitCode).toBe(0);
+		expect(session.waitForIdle).toHaveBeenCalledTimes(1);
+		expect(output.join("")).toContain("review done");
 	});
 });

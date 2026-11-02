@@ -68,6 +68,7 @@ import {
 import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.ts";
 import { type AgentSessionRuntime, SessionImportFileNotFoundError } from "../../core/agent-session-runtime.ts";
 import type { AgentSessionRuntimeDiagnostic } from "../../core/agent-session-services.ts";
+import { isUnknownModel } from "../../core/auth-guidance.ts";
 import {
 	CACHE_TTL_MS,
 	type CacheMiss,
@@ -114,7 +115,11 @@ import {
 	type UsageEntry,
 } from "../../core/session-manager.ts";
 import type { FullscreenExitOutput, TuiMode } from "../../core/settings-manager.ts";
-import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.ts";
+import {
+	BUILTIN_SLASH_COMMANDS,
+	getBuiltinSlashCommandNames,
+	resolveBuiltinSlashCommandAlias,
+} from "../../core/slash-commands.ts";
 import { getSourcePackageKey, type SourceInfo } from "../../core/source-info.ts";
 import { isInstallTelemetryEnabled } from "../../core/telemetry.ts";
 import { withBuiltInRenderers } from "../../core/tools/renderers/index.ts";
@@ -326,10 +331,6 @@ const ANTHROPIC_SUBSCRIPTION_AUTH_WARNING =
 
 function isAnthropicSubscriptionAuthKey(apiKey: string | undefined): boolean {
 	return typeof apiKey === "string" && apiKey.startsWith("sk-ant-oat");
-}
-
-function isUnknownModel(model: Model<any> | undefined): boolean {
-	return !!model && model.provider === "unknown" && model.id === "unknown" && model.api === "unknown";
 }
 
 function quoteIfNeeded(value: string): string {
@@ -718,7 +719,7 @@ export class InteractiveMode {
 	}
 
 	private getBuiltInCommandConflictDiagnostics(extensionRunner: ExtensionRunner): ResourceDiagnostic[] {
-		const builtinNames = new Set(BUILTIN_SLASH_COMMANDS.map((command) => command.name));
+		const builtinNames = getBuiltinSlashCommandNames();
 		return extensionRunner
 			.getRegisteredCommands()
 			.filter((command) => builtinNames.has(command.name))
@@ -791,6 +792,14 @@ export class InteractiveMode {
 					description: formatLoginProviderCompletionDescription(provider),
 				}));
 			};
+		}
+
+		// Aliases complete like the command they stand for.
+		for (const command of BUILTIN_SLASH_COMMANDS) {
+			const target = slashCommands.find((candidate) => candidate.name === command.name);
+			for (const alias of command.aliases ?? []) {
+				slashCommands.push({ ...target, name: alias, description: `Alias for /${command.name}` });
+			}
 		}
 
 		// Convert prompt templates to SlashCommand format for autocomplete
@@ -3259,7 +3268,7 @@ export class InteractiveMode {
 
 	private setupEditorSubmitHandler(): void {
 		this.defaultEditor.onSubmit = async (text: string) => {
-			text = text.trim();
+			text = resolveBuiltinSlashCommandAlias(text.trim());
 			if (!text) return;
 
 			// Handle commands

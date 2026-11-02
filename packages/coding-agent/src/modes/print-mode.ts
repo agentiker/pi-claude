@@ -128,12 +128,16 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 
 		await rebindSession();
 
+		// An extension command (such as /review) returns once it has queued its turn; finish that turn before the
+		// next message and before exiting.
 		if (initialMessage) {
 			await session.prompt(initialMessage, { images: initialImages });
+			await session.waitForIdle();
 		}
 
 		for (const message of messages) {
 			await session.prompt(message);
+			await session.waitForIdle();
 		}
 
 		if (mode === "text") {

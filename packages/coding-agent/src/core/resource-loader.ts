@@ -209,7 +209,8 @@ function resolvePromptInput(input: string | undefined, description: string): str
 	return input;
 }
 
-function loadContextFileFromDir(dir: string): { path: string; content: string } | null {
+/** The context file pi loads from `dir`: the first of AGENTS.override.md, AGENTS.md, CLAUDE.md that exists. */
+export function loadContextFileFromDir(dir: string): { path: string; content: string } | null {
 	const candidates = ["AGENTS.override.md", "AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
 	for (const filename of candidates) {
 		const filePath = join(dir, filename);

@@ -1,8 +1,11 @@
 import { compare, valid } from "semver";
+import { PACKAGE_NAME } from "../config.ts";
 import { fetchWithRetry } from "./management-http.ts";
 import { getPiUserAgent } from "./pi-user-agent.ts";
 
 const LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
+// pi.dev reports versions of this package; a fork published under another name has its own release line.
+const PI_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
 const DEFAULT_VERSION_CHECK_TIMEOUT_MS = 10000;
 
 export interface LatestPiRelease {
@@ -94,8 +97,11 @@ export async function getLatestPiVersion(
 	return (await getLatestPiRelease(currentVersion, options))?.version;
 }
 
-export async function checkForNewPiVersion(currentVersion: string): Promise<LatestPiRelease | undefined> {
-	if (process.env.PI_SKIP_VERSION_CHECK) return undefined;
+export async function checkForNewPiVersion(
+	currentVersion: string,
+	packageName: string = PACKAGE_NAME,
+): Promise<LatestPiRelease | undefined> {
+	if (process.env.PI_SKIP_VERSION_CHECK || packageName !== PI_PACKAGE_NAME) return undefined;
 
 	try {
 		const latestRelease = await getLatestPiRelease(currentVersion);

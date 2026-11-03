@@ -6,6 +6,11 @@ import { getPiUserAgent } from "./pi-user-agent.ts";
 const LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
 // pi.dev reports versions of this package; a fork published under another name has its own release line.
 const PI_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
+
+/** Whether `packageName` is pi's own package, the one pi.dev's version and update channel serves. */
+export function isPiPackage(packageName: string): boolean {
+	return packageName === PI_PACKAGE_NAME;
+}
 const DEFAULT_VERSION_CHECK_TIMEOUT_MS = 10000;
 
 export interface LatestPiRelease {
@@ -101,7 +106,7 @@ export async function checkForNewPiVersion(
 	currentVersion: string,
 	packageName: string = PACKAGE_NAME,
 ): Promise<LatestPiRelease | undefined> {
-	if (process.env.PI_SKIP_VERSION_CHECK || packageName !== PI_PACKAGE_NAME) return undefined;
+	if (process.env.PI_SKIP_VERSION_CHECK || !isPiPackage(packageName)) return undefined;
 
 	try {
 		const latestRelease = await getLatestPiRelease(currentVersion);

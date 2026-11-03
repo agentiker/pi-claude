@@ -41,7 +41,12 @@ import { spawnProcess, spawnProcessSync, waitForChildProcess } from "./utils/chi
 import { canonicalizePath, getCwdRelativePath } from "./utils/paths.ts";
 import { getPiUserAgent } from "./utils/pi-user-agent.ts";
 import { stripBom } from "./utils/text.ts";
-import { formatVersionCheckError, getLatestPiRelease, isNewerPackageVersion } from "./utils/version-check.ts";
+import {
+	formatVersionCheckError,
+	getLatestPiRelease,
+	isNewerPackageVersion,
+	isPiPackage,
+} from "./utils/version-check.ts";
 import {
 	cleanupWindowsSelfUpdateQuarantine,
 	quarantineWindowsNativeDependencies,
@@ -1106,6 +1111,14 @@ export async function handlePackageCommand(
 					}
 				}
 				if (updateTargetIncludesSelf(target)) {
+					// pi.dev only knows pi's releases: for a fork under another name it would "update" to pi itself.
+					if (!isPiPackage(PACKAGE_NAME)) {
+						console.error(
+							chalk.red(`${APP_NAME} cannot update itself; install a newer ${APP_NAME} release instead.`),
+						);
+						process.exitCode = 1;
+						return true;
+					}
 					const configuredSelfUpdateArgv = getConfiguredSelfUpdateArgv(
 						settingsManager.getGlobalSettings().selfUpdateCommand,
 					);

@@ -6,6 +6,7 @@ import {
 	getLatestPiRelease,
 	getLatestPiVersion,
 	isNewerPackageVersion,
+	isPiPackage,
 } from "../src/utils/version-check.ts";
 import { allowNetwork } from "./test-network-env.ts";
 
@@ -40,6 +41,11 @@ describe("version checks", () => {
 
 		await expect(checkForNewPiVersion("1.2.3")).resolves.toBeUndefined();
 		await expect(checkForNewPiVersion("1.2.2")).resolves.toEqual({ version: "1.2.3" });
+	});
+
+	it("recognizes only pi's own package as served by the pi.dev release channel", () => {
+		expect(isPiPackage("@earendil-works/pi-coding-agent")).toBe(true);
+		expect(isPiPackage("@agentiker/pika")).toBe(false);
 	});
 
 	it("skips the check for a fork published under another package name", async () => {

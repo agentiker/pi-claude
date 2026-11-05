@@ -1,206 +1,120 @@
-<p align="center">
-  <a href="https://pi.dev">
-    <img alt="pi logo" src="https://pi.dev/logo-auto.svg" width="128">
-  </a>
-</p>
-<p align="center">
-  <a href="https://discord.com/invite/3cU7Bz4UPx"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
-  <a href="https://www.npmjs.com/package/@earendil-works/pi-coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@earendil-works/pi-coding-agent?style=flat-square" /></a>
-</p>
+# pika
 
-> New issues and PRs from new contributors are auto-closed by default. Maintainers review auto-closed issues daily. See [CONTRIBUTING.md](CONTRIBUTING.md).
+pika is the [pi](https://github.com/badlogic/pi-mono) coding agent with Claude Code's slash commands built in: subagents, a task list, permission rules, hooks, code review and more. They are implemented natively on pi's extension API, so pika does not need Claude Code installed and works with any provider pi supports.
 
-# Pi
+pika is a fork of pi, currently based on pi 1.5.0. It keeps pi's terminal UI, providers, sessions, extensions, skills, and SDK.
 
-Pi is a minimal, extensible agent harness that you can make your own.
+## Install
 
-Adapt Pi to your workflows, not the other way around. Customize Pi with [extensions](packages/coding-agent/docs/extensions.md), [skills](packages/coding-agent/docs/skills.md), [prompt templates](packages/coding-agent/docs/prompt-templates.md), and [themes](packages/coding-agent/docs/themes.md). Bundle them as [Pi packages](packages/coding-agent/docs/packages.md) and share via npm or git.
-
-Pi ships with powerful defaults but skips features like sub-agents and plan mode. Ask Pi to build what you want, or install a package that does it your way.
-
-Use Pi [interactively](packages/coding-agent/docs/usage.md), automate it in [print or JSON mode](packages/coding-agent/docs/cli.md), control it over [RPC](packages/coding-agent/docs/rpc.md), or build apps with the [Pi TypeScript SDK](packages/coding-agent/docs/sdk.md). See [OpenClaw](https://github.com/OpenClaw/OpenClaw) for a real-world integration.
-
-## Getting started
-
-Install the command-line interface:
+pika requires Node.js 22.19 or newer. Download the tarball from the [latest release](https://github.com/agentiker/pi-claude/releases) and install it with npm:
 
 ```bash
-curl -fsSL https://pi.dev/install.sh | sh
+gh release download pika-v0.0.1 -R agentiker/pi-claude -p 'pika-*.tgz'
+npm install -g --ignore-scripts ./pika-0.0.1.tgz
 ```
 
-On Windows:
+This repository is private, so the download needs a GitHub login with access to it.
 
-```shell
-powershell -c "irm https://pi.dev/install.ps1 | iex"
-```
+## Get started
 
-The installer pins all dependencies and updates Pi with `pi update`. Alternatively, install directly with npm, which does not pin transitive dependencies:
-
-```bash
-npm install -g --ignore-scripts @earendil-works/pi-coding-agent
-```
-
-Pi requires Node.js 22.19 or newer. The macOS, Linux, and Windows installers can install it if needed. Pi does not require dependency lifecycle scripts for a normal npm installation.
-
-Start Pi in the directory where you want it to work:
+Start pika in the directory where you want it to work:
 
 ```bash
 cd /path/to/project
-pi
+pika
 ```
 
-For a built-in AI provider, run `/login` inside Pi to connect a subscription or API key. Then give Pi a task.
+Run `/login` to connect a provider, or configure one in `~/.pika/agent/models.json` ([format](packages/coding-agent/docs/models.md)). Then give pika a task. `/help` lists every command, and `/doctor` checks your setup.
 
-See the [documentation](https://pi.dev/docs/latest) for full setup and usage instructions, or [visit pi.dev](https://pi.dev) for demos.
-
-## Run with Nix
+To run a single prompt and exit:
 
 ```bash
-nix run github:earendil-works/pi/stable
+pika -p "Summarize this repository" </dev/null
 ```
 
-`stable` points at the latest release. Install it with `nix profile add github:earendil-works/pi/stable` and update with `nix profile upgrade pi`. Use a release tag such as `github:earendil-works/pi/v1.0.0` to pin a version, or `github:earendil-works/pi` for unreleased changes on `main`. Nix builds Pi from source.
+`-p` reads stdin until it closes, so piped input can be part of the prompt. When a script or another program runs pika, add `</dev/null` as above, or pika waits for as long as stdin stays open.
 
-Supports ARM64 and x86-64 on Linux and macOS. Use `nix build .` or `nix run .` to build or run your checkout.
+pika keeps its settings, credentials, and sessions in `~/.pika/agent`, and project files in `.pika/`. An installed pi uses `~/.pi` and is not affected. The docs in this repository still use pi's names, so read `pi` as `pika` and `.pi` as `.pika` there. Set `PIKA_CODING_AGENT_DIR` to use a different config directory.
 
-Nix builds are offline, so the bundled model data comes from a pi.dev model catalog revision pinned in `nix/model-catalog.json`. At runtime, Pi still overlays newer catalog data from pi.dev as usual. The Nix workflow replaces the pin on `main` when it no longer matches the checkout, for example after a provider is added or gains a new model type. To refresh it by hand:
+## Commands added to pi
 
-```bash
-npm run update:model-catalog-pin
+See [slash commands](packages/coding-agent/docs/slash-commands.md) for arguments and details.
+
+| Purpose | Commands |
+|---|---|
+| Inspect the session | `/help`, `/status`, `/context`, `/doctor`, `/skills`, `/usage` |
+| Hand a task to the agent | `/init`, `/review`, `/security-review`, `/simplify`, `/pr-comments` |
+| Organize work | `/todos`, `/agents`, `/loop`, `/btw`, `/memory`, `/add-dir` |
+| Configure | `/permissions`, `/hooks`, `/output-style`, `/theme`, `/keybindings`, `/vim`, `/statusline`, `/terminal-setup`, `/plugin` |
+
+Output from the inspection commands and `/btw` stays out of the model's context.
+
+Claude Code's names also work for commands pi already has:
+
+| Claude Code name | Runs |
+|---|---|
+| `/clear` | `/new` |
+| `/exit` | `/quit` |
+| `/config` | `/settings` |
+| `/effort` | `/thinking` |
+| `/rename` | `/name` |
+| `/cost` | `/session` |
+| `/release-notes` | `/changelog` |
+| `/rewind` | `/tree` (conversation only; files are not restored) |
+
+Agent files use Claude Code's format, and hook files use the format of its `hooks` setting. Hook matchers and the JSON a hook receives use pi's tool names and fields, so scripts that read Claude Code's fields need adjusting.
+
+## Permissions
+
+By default pika runs every tool call without asking, like pi. `/permissions` adds allow, ask, and deny rules:
+
+```text
+/permissions deny read(.env)
+/permissions allow bash(npm test:*)
+/permissions mode ask
 ```
 
-## Packages
+Rules guard against mistakes; they are not a security boundary. They match tool arguments and command text, so an allowed program can still do anything it is able to. Project rules and hooks load only after you trust the project with `/trust`. For real isolation, run pika in a container or sandbox ([options](packages/coding-agent/docs/containerization.md)).
 
-This monorepo contains the Pi CLI and its supporting libraries.
+## Known limitations
 
-| Package | Description |
-|---------|-------------|
-| **[@earendil-works/chord](packages/chord)** | Typed host runtime for hot-reloadable plugins, contracts, replicated state, and RPC over JSON links |
-| **[@earendil-works/pi-telemetry](packages/telemetry)** | Vendor-neutral telemetry contracts, reference adapter, conformance tests, and typed schemas |
-| **[@earendil-works/pi-ai](packages/ai)** | Unified multi-provider LLM API (OpenAI, Anthropic, Google, etc.) |
-| **[@earendil-works/pi-durable](packages/durable)** | Durable conversation, task, and document runtime |
-| **[@earendil-works/pi-agent-core](packages/agent)** | Agent runtime with tool calling and state management |
-| **[@earendil-works/pi-coding-agent](packages/coding-agent)** | Interactive coding agent CLI |
-| **[@earendil-works/pi-tui](packages/tui)** | Terminal UI library with differential rendering |
-
-For Slack/chat automation and workflows see [earendil-works/pi-chat](https://github.com/earendil-works/pi-chat).
-
-## Permissions & Containerization
-
-Pi does not include a built-in permission system for restricting filesystem, process, network, or credential access. By default, it runs with the permissions of the user and process that launched it.
-
-If you need stronger boundaries, containerize or sandbox Pi. See [packages/coding-agent/docs/containerization.md](packages/coding-agent/docs/containerization.md) for three patterns:
-
-- **Gondolin extension**: keep `pi` and provider auth on the host while routing built-in tools and `!` commands into a local Linux micro-VM.
-- **Plain Docker**: run the whole `pi` process in a local container for simple isolation.
-- **OpenShell**: run the whole `pi` process in a policy-controlled sandbox.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [AGENTS.md](AGENTS.md) for project-specific rules (for both humans and agents).  Longer term plans for Pi can also be found in [RFCs](https://rfc.earendil.com/keyword/pi/).
+- `/help`, `/status`, and the other report commands print nothing in `-p` mode. Use them interactively.
+- `/upgrade` and `pika update --self` do not update pika. Install a newer release instead.
+- Help text and docs still say pi in places.
 
 ## Development
 
 ```bash
-npm install --ignore-scripts  # Install all dependencies without running lifecycle scripts
-npm run build         # Refresh model data, then build all packages
-npm run build:offline # Rebuild using existing model data without network access
-npm run check         # Lint, format, and type check
-./test.sh            # Run tests (skips LLM-dependent tests without API keys)
-./pi-test.sh         # Run pi from sources (can be run from any directory)
-```
-
-### Using local packages outside the monorepo
-
-Build every public package into one coherent local artifact set:
-
-```bash
-npm run pack:packages -- --out .artifacts/pi-packages
-```
-
-This refreshes model data before building `pi-ai`. To avoid network access when
-model data is already hydrated, pass `--offline-model-data`.
-
-Then configure an external project to consume one package and resolve all of
-its Pi dependencies from the same artifact set. npm is the default:
-
-```bash
-node scripts/use-local-packages.mjs \
-  --manifest .artifacts/pi-packages/manifest.json \
-  --consumer ../my-project \
-  --package @earendil-works/pi-durable \
-  --package @earendil-works/pi-agent-core
-cd ../my-project
+git clone git@github.com:agentiker/pi-claude.git
+cd pi-claude
 npm install --ignore-scripts
+npm run hydrate:model-data   # download model data (needs network)
+npm run build:offline        # build all packages
+npm run check                # lint, format, and type check
+./test.sh                    # run tests that need no API keys
+./pi-test.sh                 # run from source, from any directory
 ```
 
-For a pnpm project, point `--consumer` at the workspace root:
+Running from source uses pi's names: the `pi` config directory `~/.pi/agent` unless `PI_CODING_AGENT_DIR` is set, and `.pi/` in projects.
+
+Most of pika's code is in [`packages/coding-agent/src/extensions/claude-commands/`](packages/coding-agent/src/extensions/claude-commands), with few changes to pi's core, so that upstream updates merge cleanly. See [AGENTS.md](AGENTS.md) for the repository's code and testing rules.
+
+To build a release tarball in `.artifacts/pika/`:
 
 ```bash
-node scripts/use-local-packages.mjs \
-  --manifest .artifacts/pi-packages/manifest.json \
-  --consumer ../my-project \
-  --package @earendil-works/pi-agent-core \
-  --package-manager pnpm
-cd ../my-project
-pnpm install --ignore-scripts
+node scripts/release-pika.mjs --version 0.0.2
 ```
 
-Repeat `--package` for each direct dependency. The command updates the
-consumer's `package.json` with content-addressed local `file:` references. It
-writes transitive overrides to `package.json` for npm or `pnpm-workspace.yaml`
-for pnpm. Keep the artifact directory available while installing or updating
-the consumer. Re-run both commands after changing Pi source.
-
-## Building standalone binaries from release source
-
-GitHub releases include a versioned source archive covered by the release's `SHA256SUMS` file. Extract it and run the same build script used for the official standalone binaries:
+To merge upstream pi:
 
 ```bash
-VERSION="<release-version>"
-tar -xzf "pi-${VERSION}-source.tar.gz"
-cd "pi-${VERSION}"
-./scripts/build-binaries.sh --offline-model-data --platform linux-x64 --out "$PWD/out"
+git remote add upstream https://github.com/badlogic/pi-mono   # first time only
+git fetch upstream
+git merge upstream/main
 ```
 
-The archive includes release model data and native prebuilds. `--offline-model-data` uses that model data without refreshing provider catalogs. The script installs dependencies and builds the executable with its runtime assets; pass `--skip-install` if dependencies are already provided.
-
-## Supply-chain hardening
-
-We treat npm dependency changes as reviewed code changes.
-
-- Direct external dependencies are pinned to exact versions. Internal workspace packages remain version-ranged.
-- `.npmrc` sets `save-exact=true` and `min-release-age=2` to avoid same-day dependency releases during npm resolution.
-- `package-lock.json` is the dependency ground truth. Pre-commit blocks accidental lockfile commits unless `PI_ALLOW_LOCKFILE_CHANGE=1` is set.
-- `npm run check` verifies pinned direct deps, native TypeScript import compatibility, and the generated coding-agent install lock.
-- The pi.dev installer installs from `packages/coding-agent/install-lock/`, generated from the root lockfile, to pin transitive deps. The npm package does not pin transitive deps.
-- Local release smoke tests and npm publication use the same tarball packer; npm publishes the validated tarballs rather than repacking workspace directories.
-- Local release installs, documented npm installs, and `pi update --self` use `--ignore-scripts` where supported.
-- CI installs with `npm ci --ignore-scripts`, and a scheduled GitHub workflow runs `npm audit --omit=dev` plus `npm audit signatures --omit=dev`.
-- Install lock generation has an explicit allowlist for dependency lifecycle scripts; new lifecycle-script deps fail checks until reviewed.
-
-## Share your OSS coding agent sessions
-
-If you use Pi or other coding agents for open source work, please share your sessions.
-
-Public OSS session data helps improve coding agents with real-world tasks, tool use, failures, and fixes instead of toy benchmarks.
-
-For the full explanation, see [this post on X](https://x.com/badlogicgames/status/2037811643774652911).
-
-To publish sessions, use [`badlogic/pi-share-hf`](https://github.com/badlogic/pi-share-hf). Read its README.md for setup instructions. All you need is a Hugging Face account, the Hugging Face CLI, and `pi-share-hf`.
-
-You can also watch [this video](https://x.com/badlogicgames/status/2041151967695634619), where I show how I publish my `pi-mono` sessions.
-
-I regularly publish my own `pi-mono` work sessions here:
-
-- [badlogicgames/pi-mono on Hugging Face](https://huggingface.co/datasets/badlogicgames/pi-mono)
+Upstream's version tags, such as `v0.0.1`, are separate from pika's, so pika's releases are tagged `pika-v<version>`.
 
 ## License
 
-MIT
-
-<p align="center">
-  <a href="https://pi.dev">pi.dev</a> domain graciously donated by
-  <br /><br />
-  <a href="https://exe.dev"><img src="packages/coding-agent/docs/images/exy.png" alt="Exy mascot" width="48" /><br />exe.dev</a>
-</p>
+MIT, the same as pi. See [LICENSE](LICENSE). pi is created by Mario Zechner and contributors.
